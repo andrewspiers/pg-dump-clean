@@ -1,0 +1,47 @@
+#!/bin/bash
+set -x
+#pg-dump-clean : postgresql dump and cleanup script.
+#(c) Andrew Spiers 
+#Available under the Apache License. Read LICENSE for details
+
+
+#This script is designed to be run as the postgresql administrative user,
+#'postgres' on Debian and Ubuntu systems.
+# It does the backup using postgres' "custom" format, which has compression
+# on by default. It also backs up the global objects.
+
+#Dump these $DATABASES
+DATABASES='aspiers postgres'
+#To this $LOCATION
+LOCATION='/var/lib/postgresql/9.1/dump'
+#and then remove dumps older than $PURGE_AGE days
+PURGE_AGE=10
+
+umask 0077
+
+
+##Dump databases
+echo "database dumps beginning"
+for i in ${DATABASES} ; do
+  echo dumping ${i}
+  DUMP="${LOCATION}/${i}-$(date +%F)"
+  echo pg_dump --format=custom ${i} > ${DUMP}
+done
+
+##Dump global objects
+echo Dumping global objects
+DUMP="${LOCATION}/globals-$(date +%F)"
+pg_dumpall --globals-only > ${DUMP}
+
+
+
+##purge old dumps.
+echo "Files at ${LOCATION} :"
+find ${LOCATION}  -type f -ls | wc -l
+echo "Removing old files"
+find ${LOCATION} -ctime +${PURGE_AGE} -type f -ls -delete 
+echo "Done removing old files, number of files remaining is:"
+find ${LOCATION}  -type f -ls | wc -l
+
+
+set +x
